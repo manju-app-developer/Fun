@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flappy Mallya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; /* Prevent mobile scrolling */
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-color: #f0f9ff; /* Light sky blue */
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .score-board {
+            position: absolute;
+            top: 10%;
+            font-size: 4rem;
+            font-weight: 900;
+            color: white;
+            text-shadow: 4px 4px 0 #000;
+            z-index: 10;
+        }
+        .message-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 4px solid #3b82f6;
+            pointer-events: auto;
+            max-width: 90%;
+        }
+        .btn {
+            background: #22c55e;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            box-shadow: 0 4px 0 #15803d;
+            transition: transform 0.1s;
+        }
+        .btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #15803d;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="score-display" class="score-board">0</div>
+
+        <div id="ui-layer">
+            <!-- Start Screen -->
+            <div id="start-screen" class="message-box">
+                <h1 class="text-4xl font-black text-blue-600 mb-2">FLAPPY MALLYA 🤣</h1>
+                <p class="text-gray-600 text-lg mb-4">Dodge the Stacks!</p>
+                <p class="text-sm text-gray-500 mb-4">Tap, Click, or Spacebar to Fly</p>
+                <button class="btn" onclick="startGame()">START ROLLING 🤣</button>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="game-over-screen" class="message-box hidden">
+                <h2 class="text-red-600 text-4xl font-black mb-2">CRASHED!</h2>
+                <p class="text-gray-700 text-xl">Score: <span id="final-score">0</span></p>
+                <p id="funny-comment" class="text-sm text-gray-500 italic mt-2 mb-4">"Bro, Mallya caught you! 🤣"</p>
+                <button class="btn" onclick="resetGame()">RETRY 🤣</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden image asset loader: Looks for image.png in same folder -->
+    <img id="block-img" src="image.png" style="display:none;" alt="The Block">
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score-display');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreSpan = document.getElementById('final-score');
+        const funnyComment = document.getElementById('funny-comment');
+        const blockImg = document.getElementById('block-img');
+
+        // Game Variables
+        let frames = 0;
+        let score = 0;
+        let currentState = 'START'; // START, PLAYING, GAMEOVER
+        let gameSpeed = 3;
+        const gravity = 0.25;
+
+        // Resize Handling
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- The Player (Laugh Emoji 🤣) ---
+        const bird = {
+            x: 50,
+            y: 150,
+            radius: 22,
+            velocity: 0,
+            jump: 4.6,
+            rotation: 0,
+            
+            draw: function() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                this.rotation = Math.min(Math.PI / 2, Math.max(-Math.PI / 2, (this.velocity * 0.15)));
+                ctx.rotate(this.rotation);
+                
+                ctx.font = "45px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("🤣", 0, 4); 
+                
+                ctx.restore();
+            },
+            
+            update: function() {
+                this.velocity += gravity;
+                this.y += this.velocity;
+
+                // Floor collision
+                if (this.y + this.radius >= canvas.height - fg.h) {
+                    this.y = canvas.height - fg.h - this.radius;
+                    gameOver();
+                }
+                
+                // Ceiling collision
+                if (this.y - this.radius <= 0) {
+                    this.y = this.radius;
+                    this.velocity = 0;
+                }
+            },
+            
+            flap: function() {
+                this.velocity = -this.jump;
+            }
+        };
+
+        // --- The Background ---
+        const bg = {
+            draw: function() {
+                ctx.fillStyle = "#fefce8"; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.beginPath();
+                ctx.strokeStyle = "#93c5fd";
+                ctx.lineWidth = 1;
+                for(let i = 0; i < canvas.height; i += 30) {
+                    ctx.moveTo(0, i);
+                    ctx.lineTo(canvas.width, i);
+                }
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.strokeStyle = "#fca5a5";
+                ctx.lineWidth = 2;
+                ctx.moveTo(40, 0);
+                ctx.lineTo(40, canvas.height);
+                ctx.stroke();
+            }
+        };
+
+        // --- The Foreground (Ground) ---
+        const fg = {
+            h: 50,
+            x: 0,
+            dx: 2,
+            draw: function() {
+                ctx.fillStyle = "#4ade80";
+                ctx.fillRect(this.x, canvas.height - this.h, canvas.width, this.h);
+                ctx.fillRect(this.x + canvas.width, canvas.height - this.h, canvas.width, this.h);
+                
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height - this.h);
+                ctx.lineTo(canvas.width, canvas.height - this.h);
+                ctx.strokeStyle = "#166534";
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            },
+            update: function() {
+                this.x = (this.x - gameSpeed) % (canvas.width / 2);
+            }
+        };
+
+        // --- The Pipes (Stacks of His Image) ---
+        const pipes = {
+            position: [],
+            w: 80,
+            h: 150,
+            gap: 170,
+            dx: 3,
+            
+            draw: function() {
+                for (let i = 0; i < this.position.length; i++) {
+                    let p = this.position[i];
+                    let topY = p.y;
+                    let bottomY = p.y + this.h + this.gap;
+                    
+                    this.drawFaceBlock(p.x, 0, this.w, topY + this.h);
+                    this.drawFaceBlock(p.x, bottomY, this.w, canvas.height - bottomY - fg.h);
+                }
+            },
+
+            drawFaceBlock: function(x, y, w, h) {
+                let ratio = 1.77; // Default fallback for 9:16
+                // Check if image loaded successfully
+                if (blockImg.complete && blockImg.naturalWidth > 0) {
+                    ratio = blockImg.naturalHeight / blockImg.naturalWidth;
+                }
+                const imgH = w * ratio; 
+                
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(x, y, w, h);
+                ctx.clip(); 
+
+                // Grey fallback in case image is missing
+                ctx.fillStyle = "#e5e7eb"; 
+                ctx.fillRect(x, y, w, h);
+
+                // Tile the image
+                for (let currY = y; currY < y + h; currY += imgH) {
+                    // Only try to draw if valid
+                    if (blockImg.complete && blockImg.naturalWidth > 0) {
+                        ctx.drawImage(blockImg, x, currY, w, imgH);
+                    }
+                }
+                
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 4;
+                ctx.strokeRect(x, y, w, h);
+
+                ctx.restore();
+            },
+            
+            update: function() {
+                if (frames % 120 === 0) {
+                    this.position.push({
+                        x: canvas.width,
+                        y: Math.random() * (canvas.height - fg.h - this.gap - 200) - 50 
+                    });
+                }
+                
+                for (let i = 0; i < this.position.length; i++) {
+                    let p = this.position[i];
+                    p.x -= gameSpeed; 
+                    
+                    let hitboxPadding = 5;
+                    let birdLeft = bird.x - bird.radius + hitboxPadding;
+                    let birdRight = bird.x + bird.radius - hitboxPadding;
+                    let birdTop = bird.y - bird.radius + hitboxPadding;
+                    let birdBottom = bird.y + bird.radius - hitboxPadding;
+                    
+                    let pipeLeft = p.x;
+                    let pipeRight = p.x + this.w;
+                    let topPipeBottom = p.y + this.h;
+                    let bottomPipeTop = p.y + this.h + this.gap;
+                    
+                    if (birdRight > pipeLeft && birdLeft < pipeRight && birdTop < topPipeBottom) {
+                        gameOver();
+                    }
+                    
+                    if (birdRight > pipeLeft && birdLeft < pipeRight && birdBottom > bottomPipeTop) {
+                        gameOver();
+                    }
+                    
+                    if (p.x + this.w < bird.x - bird.radius && !p.passed) {
+                        score++;
+                        p.passed = true;
+                        scoreDisplay.innerText = score;
+                        if(score % 5 === 0) gameSpeed += 0.2;
+                    }
+                    
+                    if (p.x + this.w <= 0) {
+                        this.position.shift();
+                        i--; 
+                    }
+                }
+            },
+            
+            reset: function() {
+                this.position = [];
+            }
+        };
+
+        // --- Control & Game Loop ---
+
+        function startGame() {
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            scoreDisplay.classList.remove('hidden');
+            currentState = 'PLAYING';
+            score = 0;
+            frames = 0;
+            gameSpeed = 3;
+            scoreDisplay.innerText = score;
+            
+            bird.y = 150;
+            bird.velocity = 0;
+            pipes.reset();
+            
+            loop();
+        }
+
+        function resetGame() {
+            startGame();
+        }
+
+        function gameOver() {
+            currentState = 'GAMEOVER';
+            finalScoreSpan.innerText = score;
+            
+            if(score === 0) funnyComment.innerText = "\"0? Mallya is judging you hard right now.\"";
+            else if(score < 5) funnyComment.innerText = "\"Stop laughing and start flying! 🤣\"";
+            else if(score < 15) funnyComment.innerText = "\"Respectable, but Mallya is still contemplating your skills.\"";
+            else if(score < 30) funnyComment.innerText = "\"You are the Master of Mallya Run!\"";
+            else funnyComment.innerText = "\"Okay, now you're just showing off.\"";
+
+            scoreDisplay.classList.add('hidden');
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        function loop() {
+            if (currentState !== 'PLAYING') return;
+            
+            bg.draw();
+            pipes.update();
+            pipes.draw();
+            fg.update(); 
+            fg.draw();  
+            
+            bird.update();
+            bird.draw();
+            
+            frames++;
+            requestAnimationFrame(loop);
+        }
+        
+        bg.draw();
+        fg.draw();
+        bird.draw();
+
+        window.addEventListener("keydown", function(e) {
+            if (e.code === "Space" || e.code === "ArrowUp") {
+                if(currentState === 'PLAYING') bird.flap();
+                else if(currentState !== 'PLAYING' && !startScreen.classList.contains('hidden')) startGame();
+            }
+        });
+        
+        window.addEventListener("click", function(e) {
+            if (e.target.tagName === 'BUTTON') return;
+            if(currentState === 'PLAYING') bird.flap();
+        });
+        
+        window.addEventListener("touchstart", function(e) {
+            if (e.target.tagName === 'BUTTON') return;
+            if(currentState === 'PLAYING') bird.flap();
+        });
+
+    </script>
+</body>
+</html>
+
+
