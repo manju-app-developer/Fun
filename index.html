@@ -10,7 +10,7 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #333;
+            background-color: #0f172a;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             touch-action: none; /* Prevent mobile scrolling */
         }
@@ -18,7 +18,6 @@
             position: relative;
             width: 100vw;
             height: 100vh;
-            background-color: #f0f9ff; /* Light sky blue */
             overflow: hidden;
         }
         canvas {
@@ -44,35 +43,40 @@
             font-size: 4rem;
             font-weight: 900;
             color: white;
-            text-shadow: 4px 4px 0 #000;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.5);
             z-index: 10;
         }
         .message-box {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 2rem;
-            border-radius: 1rem;
+            background: rgba(20, 20, 35, 0.95); /* Darker, cooler background */
+            padding: 2.5rem;
+            border-radius: 1.5rem;
             text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            border: 4px solid #3b82f6;
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.4); /* Purple glow */
+            border: 2px solid #8b5cf6;
             pointer-events: auto;
-            max-width: 90%;
+            max-width: 85%;
+            color: white;
+            transform: scale(1);
+            transition: transform 0.2s;
         }
         .btn {
-            background: #22c55e;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
             color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
-            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            font-weight: 800;
+            padding: 1rem 2.5rem;
             border: none;
-            border-radius: 0.5rem;
+            border-radius: 50px;
             cursor: pointer;
-            margin-top: 1rem;
-            box-shadow: 0 4px 0 #15803d;
-            transition: transform 0.1s;
+            margin-top: 1.5rem;
+            box-shadow: 0 4px 15px rgba(109, 40, 217, 0.4);
+            transition: all 0.1s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         .btn:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 #15803d;
+            transform: scale(0.95);
+            box-shadow: 0 2px 5px rgba(109, 40, 217, 0.4);
         }
         .hidden {
             display: none !important;
@@ -89,23 +93,33 @@
         <div id="ui-layer">
             <!-- Start Screen -->
             <div id="start-screen" class="message-box">
-                <h1 class="text-4xl font-black text-blue-600 mb-2">FLAPPY MALLYA 🤣</h1>
-                <p class="text-gray-600 text-lg mb-4">Dodge the Stacks!</p>
-                <p class="text-sm text-gray-500 mb-4">Tap, Click, or Spacebar to Fly</p>
-                <button class="btn" onclick="startGame()">START ROLLING 🤣</button>
+                <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4">
+                    MILF MALLYA 🤣
+                </h1>
+                <p class="text-gray-300 text-lg mb-6">Dodge the Face Stacks!</p>
+                <p class="text-xs text-gray-500 mb-2 uppercase tracking-widest">Controls</p>
+                <p class="text-sm text-gray-400 mb-6 font-mono bg-gray-800 py-2 rounded-lg">Tap • Click • Spacebar</p>
+                <button class="btn" onclick="startGame()">Start Game</button>
             </div>
 
             <!-- Game Over Screen -->
             <div id="game-over-screen" class="message-box hidden">
-                <h2 class="text-red-600 text-4xl font-black mb-2">CRASHED!</h2>
-                <p class="text-gray-700 text-xl">Score: <span id="final-score">0</span></p>
-                <p id="funny-comment" class="text-sm text-gray-500 italic mt-2 mb-4">"Bro, Mallya caught you! 🤣"</p>
-                <button class="btn" onclick="resetGame()">RETRY 🤣</button>
+                <h2 class="text-red-500 text-5xl font-black mb-2 drop-shadow-lg">WASTED!</h2>
+                <p class="text-gray-300 text-xl mb-4">Score: <span id="final-score" class="text-white font-bold">0</span></p>
+                
+                <!-- The Specific Message You Requested -->
+                <div class="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+                    <p id="funny-comment" class="text-lg text-yellow-400 font-bold italic">
+                        "Mallya is laughing hard at you..." 🤣
+                    </p>
+                </div>
+                
+                <button class="btn" onclick="resetGame()">Replay 🤣</button>
             </div>
         </div>
     </div>
 
-    <!-- Hidden image asset loader: Now looks for image.jpg -->
+    <!-- Image Asset -->
     <img id="block-img" src="image.jpg" style="display:none;" alt="The Block">
 
     <script>
@@ -121,11 +135,21 @@
         // Game Variables
         let frames = 0;
         let score = 0;
-        let currentState = 'START'; // START, PLAYING, GAMEOVER
+        let currentState = 'START'; 
         let gameSpeed = 3;
         const gravity = 0.25;
 
-        // Resize Handling
+        // Stars for background
+        const stars = [];
+        for(let i=0; i<50; i++) {
+            stars.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                size: Math.random() * 2,
+                speed: Math.random() * 0.5 + 0.1
+            });
+        }
+
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -133,7 +157,7 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // --- The Player (Laugh Emoji 🤣) ---
+        // --- The Player ---
         const bird = {
             x: 50,
             y: 150,
@@ -147,12 +171,12 @@
                 ctx.translate(this.x, this.y);
                 this.rotation = Math.min(Math.PI / 2, Math.max(-Math.PI / 2, (this.velocity * 0.15)));
                 ctx.rotate(this.rotation);
-                
                 ctx.font = "45px Arial";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
+                ctx.shadowColor = "rgba(0,0,0,0.5)";
+                ctx.shadowBlur = 10;
                 ctx.fillText("🤣", 0, 4); 
-                
                 ctx.restore();
             },
             
@@ -160,13 +184,11 @@
                 this.velocity += gravity;
                 this.y += this.velocity;
 
-                // Floor collision
                 if (this.y + this.radius >= canvas.height - fg.h) {
                     this.y = canvas.height - fg.h - this.radius;
                     gameOver();
                 }
                 
-                // Ceiling collision
                 if (this.y - this.radius <= 0) {
                     this.y = this.radius;
                     this.velocity = 0;
@@ -178,59 +200,66 @@
             }
         };
 
-        // --- The Background ---
+        // --- Better Background ---
         const bg = {
             draw: function() {
-                ctx.fillStyle = "#fefce8"; 
+                // Deep space gradient
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, "#0f172a"); // Slate 900
+                gradient.addColorStop(0.5, "#1e1b4b"); // Indigo 950
+                gradient.addColorStop(1, "#312e81"); // Indigo 900
+                
+                ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                ctx.beginPath();
-                ctx.strokeStyle = "#93c5fd";
-                ctx.lineWidth = 1;
-                for(let i = 0; i < canvas.height; i += 30) {
-                    ctx.moveTo(0, i);
-                    ctx.lineTo(canvas.width, i);
-                }
-                ctx.stroke();
-                
-                ctx.beginPath();
-                ctx.strokeStyle = "#fca5a5";
-                ctx.lineWidth = 2;
-                ctx.moveTo(40, 0);
-                ctx.lineTo(40, canvas.height);
-                ctx.stroke();
+
+                // Draw moving stars
+                ctx.fillStyle = "white";
+                stars.forEach(star => {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI*2);
+                    ctx.fill();
+                    
+                    // Move stars
+                    if(currentState === 'PLAYING') {
+                        star.x -= star.speed; 
+                        if(star.x < 0) star.x = canvas.width;
+                    }
+                });
             }
         };
 
-        // --- The Foreground (Ground) ---
+        // --- Foreground ---
         const fg = {
             h: 50,
             x: 0,
-            dx: 2,
             draw: function() {
-                ctx.fillStyle = "#4ade80";
+                // Stylish dark ground with neon strip
+                ctx.fillStyle = "#020617"; 
                 ctx.fillRect(this.x, canvas.height - this.h, canvas.width, this.h);
                 ctx.fillRect(this.x + canvas.width, canvas.height - this.h, canvas.width, this.h);
                 
+                // Neon Line
                 ctx.beginPath();
                 ctx.moveTo(0, canvas.height - this.h);
                 ctx.lineTo(canvas.width, canvas.height - this.h);
-                ctx.strokeStyle = "#166534";
+                ctx.strokeStyle = "#a855f7"; // Purple neon
                 ctx.lineWidth = 4;
+                ctx.shadowColor = "#a855f7";
+                ctx.shadowBlur = 10;
                 ctx.stroke();
+                ctx.shadowBlur = 0; // Reset shadow
             },
             update: function() {
                 this.x = (this.x - gameSpeed) % (canvas.width / 2);
             }
         };
 
-        // --- The Pipes (Stacks of His Image) ---
+        // --- Pipes ---
         const pipes = {
             position: [],
             w: 80,
             h: 150,
             gap: 170,
-            dx: 3,
             
             draw: function() {
                 for (let i = 0; i < this.position.length; i++) {
@@ -244,8 +273,7 @@
             },
 
             drawFaceBlock: function(x, y, w, h) {
-                let ratio = 1.77; // Default fallback for 9:16
-                // Check if image loaded successfully
+                let ratio = 1.77;
                 if (blockImg.complete && blockImg.naturalWidth > 0) {
                     ratio = blockImg.naturalHeight / blockImg.naturalWidth;
                 }
@@ -256,22 +284,21 @@
                 ctx.rect(x, y, w, h);
                 ctx.clip(); 
 
-                // Grey fallback in case image is missing
-                ctx.fillStyle = "#e5e7eb"; 
+                // Dark pipe bg
+                ctx.fillStyle = "#334155"; 
                 ctx.fillRect(x, y, w, h);
 
-                // Tile the image
+                // Tile image
                 for (let currY = y; currY < y + h; currY += imgH) {
-                    // Only try to draw if valid
                     if (blockImg.complete && blockImg.naturalWidth > 0) {
                         ctx.drawImage(blockImg, x, currY, w, imgH);
                     }
                 }
                 
+                // Border
                 ctx.strokeStyle = "#000";
-                ctx.lineWidth = 4;
+                ctx.lineWidth = 3;
                 ctx.strokeRect(x, y, w, h);
-
                 ctx.restore();
             },
             
@@ -287,6 +314,7 @@
                     let p = this.position[i];
                     p.x -= gameSpeed; 
                     
+                    // Hitbox logic
                     let hitboxPadding = 5;
                     let birdLeft = bird.x - bird.radius + hitboxPadding;
                     let birdRight = bird.x + bird.radius - hitboxPadding;
@@ -298,13 +326,8 @@
                     let topPipeBottom = p.y + this.h;
                     let bottomPipeTop = p.y + this.h + this.gap;
                     
-                    if (birdRight > pipeLeft && birdLeft < pipeRight && birdTop < topPipeBottom) {
-                        gameOver();
-                    }
-                    
-                    if (birdRight > pipeLeft && birdLeft < pipeRight && birdBottom > bottomPipeTop) {
-                        gameOver();
-                    }
+                    if (birdRight > pipeLeft && birdLeft < pipeRight && birdTop < topPipeBottom) gameOver();
+                    if (birdRight > pipeLeft && birdLeft < pipeRight && birdBottom > bottomPipeTop) gameOver();
                     
                     if (p.x + this.w < bird.x - bird.radius && !p.passed) {
                         score++;
@@ -325,7 +348,7 @@
             }
         };
 
-        // --- Control & Game Loop ---
+        // --- Logic ---
 
         function startGame() {
             startScreen.classList.add('hidden');
@@ -351,13 +374,7 @@
         function gameOver() {
             currentState = 'GAMEOVER';
             finalScoreSpan.innerText = score;
-            
-            if(score === 0) funnyComment.innerText = "\"0? Mallya is judging you hard right now.\"";
-            else if(score < 5) funnyComment.innerText = "\"Stop laughing and start flying! 🤣\"";
-            else if(score < 15) funnyComment.innerText = "\"Respectable, but Mallya is still contemplating your skills.\"";
-            else if(score < 30) funnyComment.innerText = "\"You are the Master of Mallya Run!\"";
-            else funnyComment.innerText = "\"Okay, now you're just showing off.\"";
-
+            // Ensure the correct message is always there (hardcoded in HTML now)
             scoreDisplay.classList.add('hidden');
             gameOverScreen.classList.remove('hidden');
         }
@@ -370,7 +387,6 @@
             pipes.draw();
             fg.update(); 
             fg.draw();  
-            
             bird.update();
             bird.draw();
             
@@ -378,6 +394,7 @@
             requestAnimationFrame(loop);
         }
         
+        // Initial Render
         bg.draw();
         fg.draw();
         bird.draw();
